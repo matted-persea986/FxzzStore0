@@ -1,0 +1,19 @@
+{
+  "name": "steam-vault-green",
+  "version": "1.0.0",
+  "description": "Steam Vault Green - private Steam accounts portal",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "seed": "node seed.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "express-session": "^1.18.1",
+    "fs-extra": "^11.3.0",
+    "nanoid": "^5.1.5",
+    "pg": "^8.20.0"
+  }
+}

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Steam Vault Green - لوحة الأدمن</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body data-page="admin">
+  <div class="cursor-dot"></div>
+  <div class="cursor-ring"></div>
+  <div class="animated-bg">
+    <span class="orb orb-1"></span>
+    <span class="orb orb-2"></span>
+    <span class="orb orb-3"></span>
+    <span class="grid-lines"></span>
+  </div>
+
+  <header class="topbar-shell"><div class="topbar glass container">
+    <div>
+      <span class="brand-kicker">Steam Vault Green</span>
+      <h2 class="brand-title">لوحة تحكم الأدمن</h2>
+      <p class="brand-sub">تحكم كامل في المستخدمين والبطاقات والقوانين والإحصائيات</p>
+    </div>
+    <nav class="topbar-nav">
+      <a href="/dashboard.html">الرئيسية</a>
+      <a href="/rules.html">القوانين</a>
+      <a href="/admin.html">لوحة الأدمن</a>
+      <button class="danger-btn" id="logoutBtn">تسجيل الخروج</button>
+    </nav>
+      <div class="topbar-profile" id="profileWidget">
+        <button type="button" class="profile-box ghost-btn" id="profileBtn">
+          <span class="profile-avatar" id="profileAvatar">S</span>
+          <span class="profile-text">
+            <strong id="profileName">جارٍ التحميل...</strong>
+            <small id="profileRole">مستخدم</small>
+          </span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container admin-layout page-stack">
+    <aside class="glass admin-sidebar">
+      <button class="sidebar-btn active" data-tab="stats">الإحصائيات</button>
+      <button class="sidebar-btn" data-tab="users">إدارة المستخدمين</button>
+      <button class="sidebar-btn" data-tab="cards">إدارة البطاقات</button>
+      <button class="sidebar-btn" data-tab="rules">إدارة القوانين</button>
+      <button class="sidebar-btn" data-tab="logs">السجلات</button>
+    </aside>
+
+    <section class="admin-content">
+      <div id="tab-stats" class="admin-tab"></div>
+      <div id="tab-users" class="admin-tab hidden"></div>
+      <div id="tab-cards" class="admin-tab hidden"></div>
+      <div id="tab-rules" class="admin-tab hidden"></div>
+      <div id="tab-logs" class="admin-tab hidden"></div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast"></div>
+  <div id="modalRoot"></div>
+  <script src="/js/app.js"></script>
+</body>
+</html>

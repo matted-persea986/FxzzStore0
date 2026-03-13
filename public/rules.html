@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Steam Vault Green - القوانين</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body data-page="rules">
+  <div class="cursor-dot"></div>
+  <div class="cursor-ring"></div>
+  <div class="animated-bg">
+    <span class="orb orb-1"></span>
+    <span class="orb orb-2"></span>
+    <span class="orb orb-3"></span>
+    <span class="grid-lines"></span>
+  </div>
+
+  <header class="topbar-shell"><div class="topbar glass container">
+    <div>
+      <span class="brand-kicker">Steam Vault Green</span>
+      <h2 class="brand-title">صفحة القوانين</h2>
+      <p class="brand-sub">الالتزام بهذه القوانين شرط أساسي لاستمرار الوصول</p>
+    </div>
+    <nav class="topbar-nav">
+      <a href="/dashboard.html">الرئيسية</a>
+      <a href="/rules.html">القوانين</a>
+      <a href="/admin.html" id="adminLink" class="hidden">لوحة الأدمن</a>
+      <button class="danger-btn" id="logoutBtn">تسجيل الخروج</button>
+    </nav>
+      <div class="topbar-profile" id="profileWidget">
+        <button type="button" class="profile-box ghost-btn" id="profileBtn">
+          <span class="profile-avatar" id="profileAvatar">S</span>
+          <span class="profile-text">
+            <strong id="profileName">جارٍ التحميل...</strong>
+            <small id="profileRole">مستخدم</small>
+          </span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container page-stack">
+    <section class="glass rules-panel">
+      <div class="section-head wide-gap">
+        <h1>قوانين الاستخدام</h1>
+        <p>هذه الصفحة توضح الشروط الأساسية الخاصة باستخدام الحسابات المعروضة داخل المنصة.</p>
+      </div>
+      <div id="rulesList" class="rules-list"></div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast"></div>
+  <div id="modalRoot"></div>
+  <script src="/js/app.js"></script>
+</body>
+</html>

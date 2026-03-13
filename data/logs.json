@@ -1,0 +1,34 @@
+[
+  {
+    "id": "fEb-9PotU1TKLCDtjRLlK",
+    "createdAt": "2026-03-12T22:58:29.858Z",
+    "action": "LOGOUT",
+    "actorEmail": "admin@vault.local",
+    "actorRole": "admin",
+    "description": "تم تسجيل الخروج"
+  },
+  {
+    "id": "ohexytEAp93gpBN6U1ZvN",
+    "createdAt": "2026-03-12T22:57:11.845Z",
+    "action": "LOGIN_SUCCESS",
+    "actorEmail": "admin@vault.local",
+    "actorRole": "admin",
+    "description": "تم تسجيل الدخول بنجاح من ::1 باستخدام Desktop • Edge • Windows"
+  },
+  {
+    "id": "0uvkpnzhC5pkWWG2_F7P3",
+    "createdAt": "2026-03-12T22:57:05.691Z",
+    "action": "LOGOUT",
+    "actorEmail": "admin@vault.local",
+    "actorRole": "admin",
+    "description": "تم تسجيل الخروج"
+  },
+  {
+    "id": "n2YHSrSxCgnnRHSo_k0Qe",
+    "createdAt": "2026-03-12T22:37:30.090Z",
+    "action": "LOGIN_SUCCESS",
+    "actorEmail": "admin@vault.local",
+    "actorRole": "admin",
+    "description": "تم تسجيل الدخول بنجاح من ::1 باستخدام Desktop • Edge • Windows"
+  }
+]

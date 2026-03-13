@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Steam Vault Green - المكتبة</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body data-page="dashboard">
+  <div class="cursor-dot"></div>
+  <div class="cursor-ring"></div>
+  <div class="animated-bg">
+    <span class="orb orb-1"></span>
+    <span class="orb orb-2"></span>
+    <span class="orb orb-3"></span>
+    <span class="grid-lines"></span>
+  </div>
+
+  <header class="topbar-shell"><div class="topbar glass container">
+    <div>
+      <span class="brand-kicker">Steam Vault Green</span>
+      <h2 class="brand-title">FxzzStore</h2>
+      <p class="brand-sub" id="welcomeText">جارٍ التحميل...</p>
+    </div>
+    <nav class="topbar-nav">
+      <a href="/dashboard.html">الرئيسية</a>
+      <a href="/rules.html">القوانين</a>
+      <a href="/admin.html" id="adminLink" class="hidden">لوحة الأدمن</a>
+      <button class="danger-btn" id="logoutBtn">تسجيل الخروج</button>
+    </nav>
+      <div class="topbar-profile" id="profileWidget">
+        <button type="button" class="profile-box ghost-btn" id="profileBtn">
+          <span class="profile-avatar" id="profileAvatar">S</span>
+          <span class="profile-text">
+            <strong id="profileName">جارٍ التحميل...</strong>
+            <small id="profileRole">مستخدم</small>
+          </span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container page-stack">
+    <section class="hero-strip glass">
+      <div>
+        <h1>استعرض بطاقات Steam</h1>
+        <p>ابحث، فلتر، رتب، وانسخ اسم المستخدم أو كلمة المرور بضغطة واحدة.</p>
+      </div>
+      <div class="stats-inline" id="quickStats"></div>
+    </section>
+
+    <section class="toolbar-grid">
+      <div class="glass toolbar-box">
+        <label>بحث سريع</label>
+        <input id="searchInput" type="text" placeholder="ابحث باسم اللعبة أو اسم المستخدم أو التصنيف" />
+      </div>
+      <div class="glass toolbar-box dual-grid">
+        <div>
+          <label>التصنيف</label>
+          <div id="categoryDropdown"></div>
+          <select id="categoryFilter" class="native-select-hidden"></select>
+        </div>
+        <div>
+          <label>الترتيب</label>
+          <div id="sortDropdown"></div>
+          <select id="sortFilter" class="native-select-hidden">
+            <option value="newest">الأحدث</option>
+            <option value="oldest">الأقدم</option>
+            <option value="title-asc">A-Z</option>
+            <option value="title-desc">Z-A</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <section id="cardsGrid" class="cards-grid"></section>
+  </main>
+
+  <div id="toast" class="toast"></div>
+  <div id="modalRoot"></div>
+  <script src="/js/app.js"></script>
+</body>
+</html>
