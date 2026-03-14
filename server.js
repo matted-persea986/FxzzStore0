@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import session from 'express-session';
 import fs from 'fs-extra';
@@ -5,12 +6,12 @@ import path from 'path';
 import crypto from 'crypto';
 import { nanoid } from 'nanoid';
 import { fileURLToPath } from 'url';
+import pool from './db.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
-const pool = require("./db");
 
 const DATA_DIR = path.join(__dirname, 'data');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
@@ -22,30 +23,6 @@ const activeSessions = new Map();
 const loginAttempts = new Map();
 const MAX_ATTEMPTS = 5;
 const BLOCK_MS = 10 * 60 * 1000;
-
-await fs.ensureDir(DATA_DIR);
-setInterval(() => {
-  syncScheduledDeactivations().catch(() => {});
-}, 30000);
-
-async function readJson(file, fallback = []) {
-  await fs.ensureFile(file);
-  const raw = await fs.readFile(file, 'utf8');
-  if (!raw.trim()) {
-    await fs.writeJson(file, fallback, { spaces: 2 });
-    return fallback;
-  }
-  try {
-    return JSON.parse(raw);
-  } catch {
-    await fs.writeJson(file, fallback, { spaces: 2 });
-    return fallback;
-  }
-}
-
-async function writeJson(file, data) {
-  await fs.writeJson(file, data, { spaces: 2 });
-}
 
 function ok(res, message, data = null, status = 200) {
   return res.status(status).json({ success: true, message, data });
@@ -90,13 +67,6 @@ function buildDisableAtFromRequest(body = {}, currentDisableAt = null) {
   return currentDisableAt || null;
 }
 
-function isScheduledDisabled(user) {
-  if (!user?.disableAt || user.isActive === false) return false;
-  const date = new Date(user.disableAt);
-  if (Number.isNaN(date.getTime())) return false;
-  return Date.now() >= date.getTime();
-}
-
 function createPasswordHash(password) {
   const salt = crypto.randomBytes(16).toString('hex');
   const hash = crypto.scryptSync(password, salt, 64).toString('hex');
@@ -126,42 +96,365 @@ function sanitizeUser(user) {
   };
 }
 
+function mapUserRow(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    role: row.role,
+    avatar: row.avatar || '',
+    isActive: row.is_active !== false,
+    bio: row.bio || '',
+    statusText: row.status_text || '',
+    avatarRingColor: row.avatar_ring_color || '#1cff8a',
+    disableAt: row.disable_at ? new Date(row.disable_at).toISOString() : null,
+    passwordHash: row.password_hash,
+    createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString()
+  };
+}
 
-async function createTables() {
+function mapCardRow(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    title: row.title,
+    category: row.category || 'عام',
+    image: row.image,
+    steamUsername: row.steam_username,
+    steamPassword: row.steam_password,
+    notes: row.notes || '',
+    createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
+    updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : new Date().toISOString()
+  };
+}
+
+function mapLogRow(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
+    action: row.action,
+    actorEmail: row.actor_email,
+    actorRole: row.actor_role,
+    description: row.description
+  };
+}
+
+async function readJsonIfExists(file, fallback = []) {
+  try {
+    const exists = await fs.pathExists(file);
+    if (!exists) return fallback;
+    const raw = await fs.readFile(file, 'utf8');
+    if (!raw.trim()) return fallback;
+    return JSON.parse(raw);
+  } catch {
+    return fallback;
+  }
+}
+
+async function ensureTables() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL UNIQUE,
+      role TEXT NOT NULL DEFAULT 'user',
+      avatar TEXT NOT NULL DEFAULT '',
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      bio TEXT NOT NULL DEFAULT '',
+      status_text TEXT NOT NULL DEFAULT '',
+      avatar_ring_color TEXT NOT NULL DEFAULT '#1cff8a',
+      disable_at TIMESTAMPTZ NULL,
+      password_hash TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS cards (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      category TEXT NOT NULL DEFAULT 'عام',
+      image TEXT NOT NULL,
+      steam_username TEXT NOT NULL,
+      steam_password TEXT NOT NULL,
+      notes TEXT NOT NULL DEFAULT '',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS rules (
       id SERIAL PRIMARY KEY,
-      name TEXT,
-      email TEXT UNIQUE,
-      password TEXT,
-      role TEXT,
-      avatar TEXT,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      content TEXT NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS logs (
+      id TEXT PRIMARY KEY,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      action TEXT NOT NULL,
+      actor_email TEXT NOT NULL,
+      actor_role TEXT NOT NULL,
+      description TEXT NOT NULL
     );
   `);
 }
 
-createTables();
+async function importLegacyJsonIfNeeded() {
+  await fs.ensureDir(DATA_DIR);
+
+  const usersCount = Number((await pool.query('SELECT COUNT(*)::int AS count FROM users')).rows[0]?.count || 0);
+  if (usersCount === 0) {
+    const legacyUsers = await readJsonIfExists(USERS_FILE, []);
+    for (const user of legacyUsers) {
+      await pool.query(
+        `INSERT INTO users
+          (id, name, email, role, avatar, is_active, bio, status_text, avatar_ring_color, disable_at, password_hash, created_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+         ON CONFLICT (id) DO NOTHING`,
+        [
+          user.id || nanoid(),
+          cleanText(user.name || 'بدون اسم'),
+          normalizeEmail(user.email || ''),
+          user.role === 'admin' ? 'admin' : 'user',
+          cleanText(user.avatar || ''),
+          user.isActive !== false,
+          cleanText(user.bio || ''),
+          cleanText(user.statusText || ''),
+          cleanText(user.avatarRingColor || '#1cff8a'),
+          parseOptionalDate(user.disableAt),
+          cleanText(user.passwordHash || ''),
+          parseOptionalDate(user.createdAt) || new Date().toISOString()
+        ]
+      );
+    }
+  }
+
+  const cardsCount = Number((await pool.query('SELECT COUNT(*)::int AS count FROM cards')).rows[0]?.count || 0);
+  if (cardsCount === 0) {
+    const legacyCards = await readJsonIfExists(CARDS_FILE, []);
+    for (const card of legacyCards) {
+      await pool.query(
+        `INSERT INTO cards
+          (id, title, category, image, steam_username, steam_password, notes, created_at, updated_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+         ON CONFLICT (id) DO NOTHING`,
+        [
+          card.id || nanoid(),
+          cleanText(card.title || 'بدون عنوان'),
+          cleanText(card.category || 'عام'),
+          cleanText(card.image || ''),
+          cleanText(card.steamUsername || ''),
+          cleanText(card.steamPassword || ''),
+          cleanText(card.notes || ''),
+          parseOptionalDate(card.createdAt) || new Date().toISOString(),
+          parseOptionalDate(card.updatedAt) || new Date().toISOString()
+        ]
+      );
+    }
+  }
+
+  const rulesCount = Number((await pool.query('SELECT COUNT(*)::int AS count FROM rules')).rows[0]?.count || 0);
+  if (rulesCount === 0) {
+    const legacyRules = await readJsonIfExists(RULES_FILE, []);
+    for (const [index, rule] of legacyRules.entries()) {
+      await pool.query(
+        'INSERT INTO rules (content, sort_order) VALUES ($1, $2)',
+        [cleanText(rule), index + 1]
+      );
+    }
+  }
+
+  const logsCount = Number((await pool.query('SELECT COUNT(*)::int AS count FROM logs')).rows[0]?.count || 0);
+  if (logsCount === 0) {
+    const legacyLogs = await readJsonIfExists(LOGS_FILE, []);
+    for (const log of legacyLogs) {
+      await pool.query(
+        `INSERT INTO logs (id, created_at, action, actor_email, actor_role, description)
+         VALUES ($1,$2,$3,$4,$5,$6)
+         ON CONFLICT (id) DO NOTHING`,
+        [
+          log.id || nanoid(),
+          parseOptionalDate(log.createdAt) || new Date().toISOString(),
+          cleanText(log.action || 'UNKNOWN'),
+          cleanText(log.actorEmail || 'system'),
+          cleanText(log.actorRole || 'system'),
+          cleanText(log.description || '')
+        ]
+      );
+    }
+  }
+}
+
+async function initDatabase() {
+  await ensureTables();
+  await importLegacyJsonIfNeeded();
+}
+
+async function getAllUsers() {
+  const result = await pool.query('SELECT * FROM users ORDER BY created_at ASC');
+  return result.rows.map(mapUserRow);
+}
+
+async function getStoredUserById(userId) {
+  const result = await pool.query('SELECT * FROM users WHERE id = $1 LIMIT 1', [userId]);
+  return mapUserRow(result.rows[0]);
+}
+
+async function getUserByEmail(email) {
+  const result = await pool.query('SELECT * FROM users WHERE LOWER(email) = $1 LIMIT 1', [normalizeEmail(email)]);
+  return mapUserRow(result.rows[0]);
+}
+
+async function saveUser(user) {
+  await pool.query(
+    `INSERT INTO users
+      (id, name, email, role, avatar, is_active, bio, status_text, avatar_ring_color, disable_at, password_hash, created_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+     ON CONFLICT (id)
+     DO UPDATE SET
+       name = EXCLUDED.name,
+       email = EXCLUDED.email,
+       role = EXCLUDED.role,
+       avatar = EXCLUDED.avatar,
+       is_active = EXCLUDED.is_active,
+       bio = EXCLUDED.bio,
+       status_text = EXCLUDED.status_text,
+       avatar_ring_color = EXCLUDED.avatar_ring_color,
+       disable_at = EXCLUDED.disable_at,
+       password_hash = EXCLUDED.password_hash,
+       created_at = EXCLUDED.created_at`,
+    [
+      user.id,
+      cleanText(user.name || ''),
+      normalizeEmail(user.email || ''),
+      user.role === 'admin' ? 'admin' : 'user',
+      cleanText(user.avatar || ''),
+      user.isActive !== false,
+      cleanText(user.bio || ''),
+      cleanText(user.statusText || ''),
+      cleanText(user.avatarRingColor || '#1cff8a'),
+      parseOptionalDate(user.disableAt),
+      cleanText(user.passwordHash || ''),
+      parseOptionalDate(user.createdAt) || new Date().toISOString()
+    ]
+  );
+}
+
+async function deleteUserById(userId) {
+  await pool.query('DELETE FROM users WHERE id = $1', [userId]);
+}
+
+async function getAllCards() {
+  const result = await pool.query('SELECT * FROM cards ORDER BY created_at DESC');
+  return result.rows.map(mapCardRow);
+}
+
+async function getCardById(cardId) {
+  const result = await pool.query('SELECT * FROM cards WHERE id = $1 LIMIT 1', [cardId]);
+  return mapCardRow(result.rows[0]);
+}
+
+async function saveCard(card) {
+  await pool.query(
+    `INSERT INTO cards
+      (id, title, category, image, steam_username, steam_password, notes, created_at, updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+     ON CONFLICT (id)
+     DO UPDATE SET
+       title = EXCLUDED.title,
+       category = EXCLUDED.category,
+       image = EXCLUDED.image,
+       steam_username = EXCLUDED.steam_username,
+       steam_password = EXCLUDED.steam_password,
+       notes = EXCLUDED.notes,
+       created_at = EXCLUDED.created_at,
+       updated_at = EXCLUDED.updated_at`,
+    [
+      card.id,
+      cleanText(card.title || ''),
+      cleanText(card.category || 'عام'),
+      cleanText(card.image || ''),
+      cleanText(card.steamUsername || ''),
+      cleanText(card.steamPassword || ''),
+      cleanText(card.notes || ''),
+      parseOptionalDate(card.createdAt) || new Date().toISOString(),
+      parseOptionalDate(card.updatedAt) || new Date().toISOString()
+    ]
+  );
+}
+
+async function deleteCardById(cardId) {
+  await pool.query('DELETE FROM cards WHERE id = $1', [cardId]);
+}
+
+async function getRules() {
+  const result = await pool.query('SELECT content FROM rules ORDER BY sort_order ASC, id ASC');
+  return result.rows.map((row) => row.content);
+}
+
+async function replaceRules(rules) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('DELETE FROM rules');
+    for (const [index, rule] of rules.entries()) {
+      await client.query('INSERT INTO rules (content, sort_order) VALUES ($1, $2)', [rule, index + 1]);
+    }
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function getLogs(limit = 300) {
+  const result = await pool.query(
+    'SELECT * FROM logs ORDER BY created_at DESC LIMIT $1',
+    [Math.max(1, Number(limit) || 50)]
+  );
+  return result.rows.map(mapLogRow);
+}
 
 async function addLog(entry) {
-  const logs = await readJson(LOGS_FILE, []);
-  logs.unshift({
-    id: nanoid(),
-    createdAt: new Date().toISOString(),
-    ...entry
-  });
-  await writeJson(LOGS_FILE, logs.slice(0, 300));
+  await pool.query(
+    `INSERT INTO logs (id, created_at, action, actor_email, actor_role, description)
+     VALUES ($1,$2,$3,$4,$5,$6)`,
+    [
+      nanoid(),
+      new Date().toISOString(),
+      cleanText(entry.action || 'UNKNOWN'),
+      cleanText(entry.actorEmail || 'system'),
+      cleanText(entry.actorRole || 'system'),
+      cleanText(entry.description || '')
+    ]
+  );
+}
+
+function isScheduledDisabled(user) {
+  if (!user?.disableAt || user.isActive === false) return false;
+  const date = new Date(user.disableAt);
+  if (Number.isNaN(date.getTime())) return false;
+  return Date.now() >= date.getTime();
 }
 
 async function syncScheduledDeactivations() {
-const result = await pool.query("SELECT * FROM users");
-const users = result.rows;  let changed = false;
+  const users = await getAllUsers();
+  let changed = false;
 
   for (const user of users) {
     if (isScheduledDisabled(user)) {
       user.isActive = false;
       removeSessionsForUser(user);
       changed = true;
+      await saveUser(user);
       await addLog({
         action: 'USER_AUTO_DISABLED',
         actorEmail: 'system',
@@ -171,11 +464,7 @@ const users = result.rows;  let changed = false;
     }
   }
 
-  if (changed) {
-    await writeJson(USERS_FILE, users);
-  }
-
-  return users;
+  return changed ? getAllUsers() : users;
 }
 
 function touchAttempt(ip) {
@@ -233,11 +522,6 @@ function parseUserAgent(userAgent = '') {
     rawUserAgent: String(userAgent || ''),
     deviceLabel: `${deviceType} • ${browser} • ${os}`
   };
-}
-
-async function getStoredUserById(userId) {
-  const users = await syncScheduledDeactivations();
-  return users.find((item) => item.id === userId) || null;
 }
 
 function removeSessionsForUser(user) {
@@ -348,6 +632,7 @@ function buildStats(sessions, users = []) {
   };
 }
 
+app.set('trust proxy', 1);
 app.use(express.json({ limit: '2mb' }));
 app.use(session({
   name: 'steam_vault_sid',
@@ -357,13 +642,21 @@ app.use(session({
   cookie: {
     httpOnly: true,
     maxAge: 1000 * 60 * 60 * 12,
-    sameSite: 'lax'
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production'
   }
 }));
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.get('/api/health', (req, res) => ok(res, 'الخادم يعمل بشكل ممتاز', { time: new Date().toISOString() }));
+app.get('/api/health', async (req, res) => {
+  try {
+    await pool.query('SELECT 1');
+    return ok(res, 'الخادم يعمل بشكل ممتاز', { time: new Date().toISOString(), database: 'connected' });
+  } catch {
+    return fail(res, 'تعذر الوصول إلى قاعدة البيانات', 500);
+  }
+});
 
 app.post('/api/auth/login', async (req, res) => {
   const email = normalizeEmail(req.body.email);
@@ -380,8 +673,8 @@ app.post('/api/auth/login', async (req, res) => {
     return fail(res, `تم حظر المحاولات مؤقتًا. حاول بعد ${remainingMinutes} دقيقة`, 429);
   }
 
-  const users = await syncScheduledDeactivations();
-  const user = users.find((item) => normalizeEmail(item.email) === email);
+  await syncScheduledDeactivations();
+  const user = await getUserByEmail(email);
 
   if (!user) {
     touchAttempt(ip);
@@ -452,11 +745,9 @@ app.get('/api/auth/me', (req, res) => {
 });
 
 app.put('/api/profile', ensureAuth, async (req, res) => {
-const result = await pool.query("SELECT * FROM users");
-const users = result.rows;  const index = users.findIndex((item) => item.id === req.session.user.id);
-  if (index === -1) return fail(res, 'المستخدم غير موجود', 404);
+  const current = await getStoredUserById(req.session.user.id);
+  if (!current) return fail(res, 'المستخدم غير موجود', 404);
 
-  const current = users[index];
   const name = cleanText(req.body.name || current.name);
   const avatar = cleanText(req.body.avatar || current.avatar || '');
 
@@ -464,8 +755,7 @@ const users = result.rows;  const index = users.findIndex((item) => item.id === 
 
   current.name = name;
   current.avatar = avatar;
-  users[index] = current;
-  await writeJson(USERS_FILE, users);
+  await saveUser(current);
 
   req.session.user = sanitizeUser(current);
 
@@ -480,20 +770,19 @@ const users = result.rows;  const index = users.findIndex((item) => item.id === 
 });
 
 app.get('/api/cards', ensureAuth, async (req, res) => {
-  const cards = await readJson(CARDS_FILE, []);
-  const sorted = [...cards].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  return ok(res, 'تم جلب بطاقات Steam', { cards: sorted });
+  const cards = await getAllCards();
+  return ok(res, 'تم جلب بطاقات Steam', { cards });
 });
 
 app.get('/api/rules', ensureAuth, async (req, res) => {
-  const rules = await readJson(RULES_FILE, []);
+  const rules = await getRules();
   return ok(res, 'تم جلب القوانين', { rules });
 });
 
 app.put('/api/rules', ensureAdmin, async (req, res) => {
   const rules = Array.isArray(req.body.rules) ? req.body.rules.map(cleanText).filter(Boolean) : null;
   if (!rules) return fail(res, 'البيانات المرسلة غير صحيحة', 422);
-  await writeJson(RULES_FILE, rules);
+  await replaceRules(rules);
   await addLog({
     action: 'RULES_UPDATED',
     actorEmail: req.session.user.email,
@@ -505,8 +794,8 @@ app.put('/api/rules', ensureAdmin, async (req, res) => {
 
 app.get('/api/admin/stats', ensureAdmin, async (req, res) => {
   const users = await syncScheduledDeactivations();
-  const cards = await readJson(CARDS_FILE, []);
-  const logs = await readJson(LOGS_FILE, []);
+  const cards = await getAllCards();
+  const logs = await getLogs(50);
   const stats = buildStats(Array.from(activeSessions.values()), users);
   return ok(res, 'تم جلب الإحصائيات', {
     totalUsers: users.length,
@@ -539,8 +828,8 @@ app.post('/api/admin/users', ensureAdmin, async (req, res) => {
     return fail(res, 'كلمة المرور يجب أن تكون 6 أحرف أو أكثر', 422);
   }
 
-  const users = await syncScheduledDeactivations();
-  if (users.some((item) => normalizeEmail(item.email) === email)) {
+  const existingUser = await getUserByEmail(email);
+  if (existingUser) {
     return fail(res, 'هذا البريد موجود مسبقًا', 409);
   }
 
@@ -560,8 +849,7 @@ app.post('/api/admin/users', ensureAdmin, async (req, res) => {
     createdAt: new Date().toISOString()
   };
 
-  users.push(newUser);
-  await writeJson(USERS_FILE, users);
+  await saveUser(newUser);
   await addLog({
     action: 'USER_CREATED',
     actorEmail: req.session.user.email,
@@ -572,11 +860,9 @@ app.post('/api/admin/users', ensureAdmin, async (req, res) => {
 });
 
 app.put('/api/admin/users/:id', ensureAdmin, async (req, res) => {
-  const users = await syncScheduledDeactivations();
-  const index = users.findIndex((item) => item.id === req.params.id);
-  if (index === -1) return fail(res, 'المستخدم غير موجود', 404);
+  const current = await getStoredUserById(req.params.id);
+  if (!current) return fail(res, 'المستخدم غير موجود', 404);
 
-  const current = users[index];
   const name = cleanText(req.body.name || current.name);
   const email = normalizeEmail(req.body.email || current.email);
   const role = req.body.role === 'admin' ? 'admin' : (req.body.role === 'user' ? 'user' : current.role);
@@ -587,7 +873,8 @@ app.put('/api/admin/users/:id', ensureAdmin, async (req, res) => {
   const avatarRingColor = cleanText(req.body.avatarRingColor || current.avatarRingColor || '#1cff8a');
   const disableAt = buildDisableAtFromRequest(req.body, current.disableAt || null);
 
-  if (users.some((item) => item.id !== current.id && normalizeEmail(item.email) === email)) {
+  const sameEmailUser = await getUserByEmail(email);
+  if (sameEmailUser && sameEmailUser.id !== current.id) {
     return fail(res, 'البريد مستخدم لحساب آخر', 409);
   }
 
@@ -609,8 +896,7 @@ app.put('/api/admin/users/:id', ensureAdmin, async (req, res) => {
     current.passwordHash = createPasswordHash(password);
   }
 
-  users[index] = current;
-  await writeJson(USERS_FILE, users);
+  await saveUser(current);
 
   if (current.isActive === false) {
     removeSessionsForUser(current);
@@ -626,15 +912,12 @@ app.put('/api/admin/users/:id', ensureAdmin, async (req, res) => {
 });
 
 app.patch('/api/admin/users/:id/status', ensureAdmin, async (req, res) => {
-  const users = await syncScheduledDeactivations();
-  const index = users.findIndex((item) => item.id === req.params.id);
-  if (index === -1) return fail(res, 'المستخدم غير موجود', 404);
+  const target = await getStoredUserById(req.params.id);
+  if (!target) return fail(res, 'المستخدم غير موجود', 404);
 
-  const target = users[index];
   target.isActive = req.body.isActive === false || req.body.isActive === 'false' ? false : true;
   target.disableAt = buildDisableAtFromRequest(req.body, target.disableAt || null);
-  users[index] = target;
-  await writeJson(USERS_FILE, users);
+  await saveUser(target);
 
   if (target.isActive === false) {
     removeSessionsForUser(target);
@@ -651,11 +934,9 @@ app.patch('/api/admin/users/:id/status', ensureAdmin, async (req, res) => {
 });
 
 app.delete('/api/admin/users/:id', ensureAdmin, async (req, res) => {
-const result = await pool.query("SELECT * FROM users");
-const users = result.rows;  const target = users.find((item) => item.id === req.params.id);
+  const target = await getStoredUserById(req.params.id);
   if (!target) return fail(res, 'المستخدم غير موجود', 404);
-  const nextUsers = users.filter((item) => item.id !== req.params.id);
-  await writeJson(USERS_FILE, nextUsers);
+  await deleteUserById(req.params.id);
   removeSessionsForUser(target);
   await addLog({
     action: 'USER_DELETED',
@@ -667,7 +948,7 @@ const users = result.rows;  const target = users.find((item) => item.id === req.
 });
 
 app.get('/api/admin/cards', ensureAdmin, async (req, res) => {
-  const cards = await readJson(CARDS_FILE, []);
+  const cards = await getAllCards();
   return ok(res, 'تم جلب البطاقات', { cards });
 });
 
@@ -683,7 +964,6 @@ app.post('/api/admin/cards', ensureAdmin, async (req, res) => {
     return fail(res, 'كل بيانات البطاقة الأساسية مطلوبة', 422);
   }
 
-  const cards = await readJson(CARDS_FILE, []);
   const newCard = {
     id: nanoid(),
     title,
@@ -695,8 +975,8 @@ app.post('/api/admin/cards', ensureAdmin, async (req, res) => {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
-  cards.push(newCard);
-  await writeJson(CARDS_FILE, cards);
+
+  await saveCard(newCard);
   await addLog({
     action: 'CARD_CREATED',
     actorEmail: req.session.user.email,
@@ -707,11 +987,9 @@ app.post('/api/admin/cards', ensureAdmin, async (req, res) => {
 });
 
 app.put('/api/admin/cards/:id', ensureAdmin, async (req, res) => {
-  const cards = await readJson(CARDS_FILE, []);
-  const index = cards.findIndex((item) => item.id === req.params.id);
-  if (index === -1) return fail(res, 'البطاقة غير موجودة', 404);
+  const current = await getCardById(req.params.id);
+  if (!current) return fail(res, 'البطاقة غير موجودة', 404);
 
-  const current = cards[index];
   current.title = cleanText(req.body.title || current.title);
   current.category = cleanText(req.body.category || current.category);
   current.image = cleanText(req.body.image || current.image);
@@ -720,8 +998,7 @@ app.put('/api/admin/cards/:id', ensureAdmin, async (req, res) => {
   current.notes = cleanText(req.body.notes || current.notes || '');
   current.updatedAt = new Date().toISOString();
 
-  cards[index] = current;
-  await writeJson(CARDS_FILE, cards);
+  await saveCard(current);
   await addLog({
     action: 'CARD_UPDATED',
     actorEmail: req.session.user.email,
@@ -732,11 +1009,9 @@ app.put('/api/admin/cards/:id', ensureAdmin, async (req, res) => {
 });
 
 app.delete('/api/admin/cards/:id', ensureAdmin, async (req, res) => {
-  const cards = await readJson(CARDS_FILE, []);
-  const target = cards.find((item) => item.id === req.params.id);
+  const target = await getCardById(req.params.id);
   if (!target) return fail(res, 'البطاقة غير موجودة', 404);
-  const nextCards = cards.filter((item) => item.id !== req.params.id);
-  await writeJson(CARDS_FILE, nextCards);
+  await deleteCardById(req.params.id);
   await addLog({
     action: 'CARD_DELETED',
     actorEmail: req.session.user.email,
@@ -747,8 +1022,8 @@ app.delete('/api/admin/cards/:id', ensureAdmin, async (req, res) => {
 });
 
 app.get('/api/admin/logs', ensureAdmin, async (req, res) => {
-  const logs = await readJson(LOGS_FILE, []);
-  return ok(res, 'تم جلب السجلات', { logs: logs.slice(0, 50) });
+  const logs = await getLogs(50);
+  return ok(res, 'تم جلب السجلات', { logs });
 });
 
 app.get('*', (req, res) => {
@@ -759,6 +1034,13 @@ app.get('*', (req, res) => {
   }
   return res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
+
+await initDatabase();
+setInterval(() => {
+  syncScheduledDeactivations().catch((error) => {
+    console.error('Scheduled deactivation sync failed:', error.message);
+  });
+}, 30000);
 
 app.listen(PORT, () => {
   console.log(`Steam Vault Green running on http://localhost:${PORT}`);

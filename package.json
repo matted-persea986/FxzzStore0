@@ -10,6 +10,7 @@
     "seed": "node seed.js"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.99.1",
     "express": "^4.21.2",
     "express-session": "^1.18.1",
     "fs-extra": "^11.3.0",
