@@ -1897,3 +1897,89 @@ body.has-fixed-topbar {
     justify-content: center !important;
   }
 }
+
+
+/* ===== FxzzStore Luxury Glow Logo ===== */
+.login-brand-head{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  margin-bottom:14px;
+}
+
+.brand-mini-badge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:8px 16px;
+  border-radius:999px;
+  font-size:.78rem;
+  font-weight:800;
+  letter-spacing:.18em;
+  color:#d8ffe9;
+  background:linear-gradient(135deg, rgba(28,255,138,.14), rgba(0,198,255,.12));
+  border:1px solid rgba(84,255,155,.28);
+  box-shadow:
+    0 0 18px rgba(28,255,138,.12),
+    inset 0 0 18px rgba(255,255,255,.03);
+}
+
+.fxzz-logo{
+  margin:0;
+  font-size:clamp(2.4rem, 5vw, 4.4rem) !important;
+  font-weight:900;
+  letter-spacing:.04em;
+  line-height:1;
+  text-align:center;
+  text-transform:none;
+  background:linear-gradient(90deg, #ffffff 0%, #bfffdc 25%, #1cff8a 55%, #7dffb4 75%, #ffffff 100%);
+  background-size:200% auto;
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  background-clip:text;
+  color:transparent;
+  text-shadow:
+    0 0 10px rgba(28,255,138,.30),
+    0 0 22px rgba(28,255,138,.22),
+    0 0 46px rgba(28,255,138,.18);
+  filter:drop-shadow(0 0 12px rgba(28,255,138,.22));
+  animation:fxzzGlowMove 4s linear infinite, fxzzPulse 2.2s ease-in-out infinite;
+  position:relative;
+}
+
+.fxzz-logo::after{
+  content:"FxzzStore";
+  position:absolute;
+  inset:0;
+  z-index:-1;
+  color:rgba(28,255,138,.18);
+  filter:blur(14px);
+  opacity:.95;
+}
+
+.login-subtitle{
+  margin:0;
+  color:#b7d9c3 !important;
+  font-size:1rem;
+  letter-spacing:.03em;
+  text-align:center;
+  text-shadow:0 0 12px rgba(28,255,138,.08);
+}
+
+@keyframes fxzzGlowMove{
+  0%{ background-position:0% center; }
+  100%{ background-position:200% center; }
+}
+
+@keyframes fxzzPulse{
+  0%, 100%{
+    transform:scale(1);
+    filter:drop-shadow(0 0 10px rgba(28,255,138,.20));
+  }
+  50%{
+    transform:scale(1.02);
+    filter:drop-shadow(0 0 20px rgba(28,255,138,.32));
+  }
+}
