@@ -1731,3 +1731,160 @@ body.has-fixed-topbar {
     padding-top: 270px;
   }
 }
+/* ===============================
+   TOPBAR LAYOUT FIX
+   شعار يمين - ازرار وسط - بروفايل يسار
+================================ */
+
+.topbar{
+  position:relative;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+
+/* الشعار */
+.brand{
+  margin-right:0;
+  display:flex;
+  flex-direction:column;
+}
+
+/* الازرار في المنتصف */
+.topbar-nav{
+  position:absolute;
+  left:50%;
+  transform:translateX(-50%);
+  display:flex;
+  gap:10px;
+  align-items:center;
+}
+
+/* البروفايل يسار */
+.topbar-profile{
+  margin-left:0;
+}
+
+/* إزالة الخلفية الكبيرة */
+.topbar-shell{
+  background:none !important;
+  backdrop-filter:none !important;
+}
+
+/* تحسين توزيع العناصر */
+.topbar > *{
+  flex-shrink:0;
+}
+
+/* الموبايل */
+@media (max-width:780px){
+
+  .topbar{
+    flex-direction:column;
+    gap:12px;
+  }
+
+  .topbar-nav{
+    position:static;
+    transform:none;
+    justify-content:center;
+    flex-wrap:wrap;
+  }
+
+  .topbar-profile{
+    justify-content:center;
+  }
+
+}
+
+
+/* ===============================
+   FINAL TOPBAR POSITION FIX
+   إزالة خلفية الشريط الخارجي
+   الشعار يمين - الأزرار وسط - البروفايل يسار
+================================ */
+
+.topbar-shell{
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.topbar-shell::before,
+.topbar-shell::after{
+  display: none !important;
+  content: none !important;
+}
+
+.topbar{
+  display: grid !important;
+  grid-template-columns: minmax(220px, auto) 1fr minmax(220px, auto) !important;
+  grid-template-areas: "brand nav profile" !important;
+  align-items: center !important;
+  gap: 18px !important;
+  position: relative !important;
+}
+
+.topbar-brand,
+.brand{
+  grid-area: brand !important;
+  justify-self: end !important;
+  text-align: right !important;
+}
+
+.topbar-nav{
+  grid-area: nav !important;
+  position: static !important;
+  left: auto !important;
+  transform: none !important;
+  justify-self: center !important;
+  justify-content: center !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+}
+
+.topbar-profile{
+  grid-area: profile !important;
+  justify-self: start !important;
+  display: flex !important;
+  justify-content: flex-start !important;
+  align-items: center !important;
+  margin-left: 0 !important;
+}
+
+.profile-box{
+  min-width: 220px !important;
+}
+
+.topbar > *{
+  min-width: 0;
+}
+
+@media (max-width: 900px){
+  .topbar{
+    grid-template-columns: 1fr !important;
+    grid-template-areas:
+      "brand"
+      "nav"
+      "profile" !important;
+  }
+
+  .topbar-brand,
+  .brand,
+  .topbar-nav,
+  .topbar-profile{
+    justify-self: center !important;
+    text-align: center !important;
+  }
+
+  .topbar-profile{
+    justify-content: center !important;
+  }
+
+  .profile-box{
+    min-width: 0 !important;
+    width: 100% !important;
+    max-width: 360px !important;
+    justify-content: center !important;
+  }
+}
