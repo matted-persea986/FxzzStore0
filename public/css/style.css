@@ -2064,38 +2064,83 @@ body[data-page="login"] .demo-box{
     flex: 1;
   }
 }
-/* Animated particles */
 
-.particles,
-.particles::before,
-.particles::after{
-  content:"";
-  position:absolute;
-  inset:-20%;
-  background-image:
-    radial-gradient(circle, rgba(125,255,180,.5) 1px, transparent 1.5px),
-    radial-gradient(circle, rgba(125,255,180,.2) 1px, transparent 1.5px);
-  background-size:120px 120px, 180px 180px;
-  background-position:0 0, 60px 80px;
-  opacity:.18;
-  animation:particleMove 28s linear infinite;
+/* =========================
+   MATRIX BACKGROUND FXZZ STORE
+========================= */
+#matrix{
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none;
+  opacity: .22;
+  mix-blend-mode: screen;
 }
 
-.particles::before{
-  animation-duration:40s;
-  transform:scale(1.1);
+.animated-bg{
+  z-index: 0;
 }
 
-.particles::after{
-  animation-duration:18s;
-  transform:scale(.9);
+.page-stack,
+.topbar-shell,
+.toast,
+.modal-overlay,
+.cursor-dot,
+.cursor-ring{
+  position: relative;
+  z-index: 2;
 }
 
-@keyframes particleMove{
-  from{
-    transform:translateY(0);
-  }
-  to{
-    transform:translateY(80px);
-  }
+.matrix-brand{
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  text-align: center;
+  z-index: 1;
+  opacity: .16;
+  user-select: none;
+}
+
+.matrix-brand span,
+.matrix-brand strong{
+  display: block;
+  font-family: Consolas, "Courier New", monospace;
+  text-transform: uppercase;
+  letter-spacing: .24em;
+  color: #8dffc1;
+  text-shadow:
+    0 0 8px rgba(34,255,149,.45),
+    0 0 18px rgba(34,255,149,.25),
+    0 0 42px rgba(34,255,149,.12);
+}
+
+.matrix-brand span{
+  font-size: clamp(2.6rem, 8vw, 7rem);
+  font-weight: 700;
+  animation: matrixBrandFlicker 5.4s ease-in-out infinite;
+}
+
+.matrix-brand strong{
+  margin-top: 10px;
+  font-size: clamp(1.6rem, 5vw, 4.2rem);
+  font-weight: 900;
+  color: #d2ffe8;
+  animation: matrixBrandFlicker 5.4s ease-in-out infinite 1.1s;
+}
+
+@keyframes matrixBrandFlicker {
+  0%, 17%, 19%, 64%, 100% { opacity: .82; transform: translateY(0); }
+  18% { opacity: .28; transform: translateY(2px); }
+  67% { opacity: .12; transform: translateY(-2px); }
+}
+
+@media (max-width: 780px){
+  #matrix{ opacity: .16; }
+  .matrix-brand{ opacity: .13; }
+  .matrix-brand span,
+  .matrix-brand strong{ letter-spacing: .14em; }
 }
