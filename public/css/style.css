@@ -2064,3 +2064,38 @@ body[data-page="login"] .demo-box{
     flex: 1;
   }
 }
+/* Animated particles */
+
+.particles,
+.particles::before,
+.particles::after{
+  content:"";
+  position:absolute;
+  inset:-20%;
+  background-image:
+    radial-gradient(circle, rgba(125,255,180,.5) 1px, transparent 1.5px),
+    radial-gradient(circle, rgba(125,255,180,.2) 1px, transparent 1.5px);
+  background-size:120px 120px, 180px 180px;
+  background-position:0 0, 60px 80px;
+  opacity:.18;
+  animation:particleMove 28s linear infinite;
+}
+
+.particles::before{
+  animation-duration:40s;
+  transform:scale(1.1);
+}
+
+.particles::after{
+  animation-duration:18s;
+  transform:scale(.9);
+}
+
+@keyframes particleMove{
+  from{
+    transform:translateY(0);
+  }
+  to{
+    transform:translateY(80px);
+  }
+}
