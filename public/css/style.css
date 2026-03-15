@@ -311,6 +311,15 @@ input, select, textarea {
   outline: none;
 }
 
+.section-head::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 16px rgba(28,255,138,.8);
+}
+
 select {
   appearance: none;
   -webkit-appearance: none;
