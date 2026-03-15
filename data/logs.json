@@ -1,5 +1,21 @@
 [
   {
+    "id": "KVDaLHgFlKAN4pdiVB2cS",
+    "createdAt": "2026-03-15T00:54:24.470Z",
+    "action": "LOGIN_SUCCESS",
+    "actorEmail": "admin@vault.local",
+    "actorRole": "admin",
+    "description": "تم تسجيل الدخول بنجاح من ::1 باستخدام Desktop • Chrome • Windows"
+  },
+  {
+    "id": "ur4VgiUZCYvdD15g614Ie",
+    "createdAt": "2026-03-15T00:54:10.139Z",
+    "action": "LOGIN_SUCCESS",
+    "actorEmail": "admin@vault.local",
+    "actorRole": "admin",
+    "description": "تم تسجيل الدخول بنجاح من ::1 باستخدام Desktop • Edge • Windows"
+  },
+  {
     "id": "fEb-9PotU1TKLCDtjRLlK",
     "createdAt": "2026-03-12T22:58:29.858Z",
     "action": "LOGOUT",
