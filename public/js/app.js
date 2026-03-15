@@ -563,7 +563,7 @@ function createModal({ title, text, onConfirm, confirmText = 'تأكيد', cance
       <div class="modal-box glass themed-modal">
         <div class="modal-header-row">
           <div>
-            <span class="modal-kicker">Steam Vault Green</span>
+            <span class="modal-kicker">Fxzz Store</span>
             <h3>${escapeHtml(title)}</h3>
           </div>
         </div>
@@ -595,7 +595,7 @@ function createFormModal({ title, subtitle = '', fields = [], submitText = 'حف
       <div class="modal-box glass themed-modal large-modal">
         <div class="modal-header-row">
           <div>
-            <span class="modal-kicker">Steam Vault Green</span>
+            <span class="modal-kicker">Fxzz Store</span>
             <h3>${escapeHtml(title)}</h3>
             ${subtitle ? `<p class="muted modal-description">${escapeHtml(subtitle)}</p>` : ''}
           </div>

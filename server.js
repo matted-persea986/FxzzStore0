@@ -806,5 +806,5 @@ app.get('*', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Steam Vault Green running on http://localhost:${PORT}`);
+  console.log(` Fxzz Store running on http://localhost:${PORT}`);
 });
