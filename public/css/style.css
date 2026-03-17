@@ -1807,10 +1807,10 @@ body.has-fixed-topbar {
 }
 
 
-.discord-float{
+.topbar-float{
   position: fixed;
-  left: 1200px;
-  bottom: 848px;
+  left: 18px;
+  bottom: 40px;
   width: 58px;
   height: 58px;
   display: flex;
@@ -1832,38 +1832,31 @@ body.has-fixed-topbar {
   transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
 }
 
-.discord-float::before{
-  content: "";
-  position: absolute;
-  inset: 6px;
-  border-radius: 12px;
-  border: 1px solid rgba(0,255,140,0.08);
-  pointer-events: none;
+.discord-top{
+display:flex;
+align-items:center;
+gap:8px;
+padding:10px 16px;
+border-radius:14px;
+text-decoration:none;
+color:#caffea;
+
+background:rgba(5,22,15,0.85);
+border:1px solid rgba(0,255,140,0.2);
+
+transition:0.25s;
 }
 
-.discord-float img{
-  width: 30px;
-  height: 30px;
-  object-fit: contain;
-  filter:
-    drop-shadow(0 0 6px rgba(0,255,140,0.35))
-    drop-shadow(0 0 12px rgba(0,255,140,0.18));
+.discord-top img{
+width:20px;
+height:20px;
 }
 
-.discord-float:hover{
-  transform: translateY(-4px) scale(1.05);
-  border-color: rgba(0,255,140,0.42);
-  box-shadow:
-    0 0 0 1px rgba(0,255,140,0.1) inset,
-    0 0 22px rgba(0,255,140,0.25),
-    0 0 52px rgba(0,255,140,0.14);
+.discord-top:hover{
+border-color:rgba(0,255,140,0.5);
+box-shadow:0 0 15px rgba(0,255,140,0.2);
+transform:translateY(-2px);
 }
-
-.discord-float:active{
-  transform: scale(0.97);
-}
-
-
 
 /* ===============================
    FINAL TOPBAR POSITION FIX
